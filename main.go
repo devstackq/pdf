@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/ledongthuc/pdf"
 )
+
+//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
 
 type Reader interface {
 	Read()
@@ -25,22 +28,87 @@ func (e *Excel) Read() {
 }
 
 type Pdf struct {
-	lines []string
+	pages []*Page
 }
 
 func NewPdf() *Pdf {
 	return &Pdf{}
 }
 
+//temp
+type DBMarkerIds struct {
+	id      int
+	ids     []int
+	isGroup bool
+	name    string
+	abbr    string
+	marker  []Marker
+}
+type Marker struct {
+	id    int
+	value float64
+}
+
 func (p *Pdf) Read() {
-	// use pdf libs
 	content, err := readPdf4(os.Args[1]) // Read local pdf file
 	if err != nil {
 		panic(err)
 	}
+	p.pages = content
+
+	var markersDb []*DBMarkerIds
+
+	markersDb = append(markersDb, &DBMarkerIds{}, &DBMarkerIds{})
+
+	markersDb[0].abbr = "oak"
+	markersDb[0].id = 43
+	markersDb[0].ids = []int{17, 44}
+	markersDb[0].name = "Общий анализ крови"
+
+	markersDb[1].abbr = "ttg"
+	markersDb[1].id = 69
+	markersDb[1].name = "ТТГ"
+
+	markersDb[0].abbr = "HGB"
+	markersDb[0].id = 23
+	markersDb[0].name = "Гемоглобин"
+
+	for _, page := range p.pages {
+		if page.groupIndex > 0 {
+			//group logic;
+		} else {
+			for idx, text := range page.line {
+				for _, dbMrk := range markersDb {
+					//here write value
+					// 	// dbMrk.name == text || if abbr empty ? -> comapre by name
+					if dbMrk.abbr == text {
+						log.Println(page.line[idx+2], "val", idx, text)
+					}
+				}
+			}
+		}
+
+	}
+
+	is group ? -> fill; by ids -> for loop range - ids ->fill id; value;
+	//save - all; result - like cache ->
+	// then final result ->
+
+	for _, marker := range markersDb {
+		//1: for - analyses
+		//2 for - save Db
+		if len(marker.ids) > 0 {
+			//fill group marker
+		} else {
+			//fill single marker
+		}
+	}
 
 	fmt.Println(content)
 
+}
+
+// func(p *Pdf compchan)
 
 /*
 if user -> want auth ? -> call
@@ -82,21 +150,30 @@ return client
 func main() {
 	pdf := NewPdf()
 	pdf.Read()
-
-	excel := NewExcel()
-	excel.Read()
+	// excel := NewExcel()
+	// excel.Read()
 }
 
-func readPdf4(path string) (string, error) {
+type Page struct {
+	line       []string
+	groupIndex int
+	name       string
+	totalPage  int
+}
+
+func readPdf4(path string) ([]*Page, error) {
 	f, r, err := pdf.Open(path)
 	defer func() {
 		_ = f.Close()
 	}()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	totalPage := r.NumPage()
+	pages := []*Page{}
 
+	//On(4)
+	//each page - read; write to struct
 	for pageIndex := 1; pageIndex <= totalPage; pageIndex++ {
 		p := r.Page(pageIndex)
 		if p.V.IsNull() {
@@ -106,16 +183,28 @@ func readPdf4(path string) (string, error) {
 		// check inside page -> ОАК || single ? -> send page - another func ->
 
 		rows, _ := p.GetTextByRow()
-		println(pageIndex)
+		// println(pageIndex)
+
+		/* write to struct(then manipalate Data) */
+		page := &Page{}
 
 		for _, row := range rows {
 			// println(">>>> row: ", row.Position, idx)
-			fmt.Println(row.Content, row.Position)
-			// if strings.Contains(row.Content, "Общий анализ крови") {
-			// for _, word := range row.Content {
-			// 	fmt.Println(word.S)
-			// }
+			for _, word := range row.Content {
+				page.line = append(page.line, word.S)
+
+				//Қан  талдауы / Общий анализ крови || общий анализ мочи, etc
+				if strings.Contains(word.S, "Общий анализ крови") {
+					page.groupIndex = pageIndex
+					log.Println("send group function, this page", pageIndex)
+					page.name = word.S
+				}
+				//else sne signleFunc()
+			}
 		}
+		pages = append(pages, page)
 	}
-	return "", nil
+	log.Println(pages[0], pages[1], pages[2], len(pages))
+	// p.pages = pages
+	return pages, nil
 }
