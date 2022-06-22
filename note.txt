@@ -1,0 +1,71 @@
+struct from Db
+
+mrks = []{
+    {
+    id: 14,
+    abbr : "trg",
+    ids : [],
+    },
+    {
+        id : 43,
+        abbr : "oak",
+        ids : [17,44]
+    },
+    ...
+}
+groups := []struct{}
+single := []struct{}
+
+collect := NewCollect()
+
+
+for _, m := range mrks {
+    if m.abbr == page[i].abbr {
+        if len(m.ids) > 0 {
+        g :=     p.CollectToGroup(m.id, m.ids)
+        groups = append(groups, g)
+
+        }else {
+            p.CollectToSingle()
+        }
+    }
+}
+
+
+
+
+/*
+if user -> want auth ? -> call
+select * names; abbr -> set in Map[name]=id...
+hash sum - of file; compare -> next file is  = uniq ?
+
+readPdf -> save || share -> isAuth -> authByPhone -> fill relative;
+case1: share -> client json -> []groups; []single -> request - fetchs(relId, m_id, value) (save in db markers)
+client -> sent url\share -> markerId; relId; - receive link
+
+readPdf solve:
+return  {
+1 variant: []marker -> for graphic
+2 variant: []group markers; by date;  []single markers; by date; -> for save data Db
+}
+
+save || share :
+case1: send request -> for loop []group => {
+	fetch(groupId : 43, relId : 22,  []{id: 3, val: 2.1; id : 15 : val: 45})..
+}
+
+
+loop - pdfFiles {
+	loop - pdfPages;
+	prepare1Variant() {
+		getDbMarkerId() // name || abbr
+		merge single/group ->
+	}
+	prepare2Variant() {
+		filter by date;
+		devide single & group markers
+		getDbMarkerId() // name || abbr
+	}
+}
+return client
+*/

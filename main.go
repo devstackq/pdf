@@ -1,10 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ledongthuc/pdf"
 )
@@ -36,119 +37,102 @@ func NewPdf() *Pdf {
 }
 
 //temp
-type DBMarkerIds struct {
-	id      int
-	ids     []int
-	isGroup bool
-	name    string
-	abbr    string
-	marker  []Marker
-}
+// type DBMarkerIds struct {
+// 	id      int64
+// 	ids     []int64
+// 	name    string
+// 	abbr    string
+// 	markers []Marker
+// }
+
 type Marker struct {
-	id    int
-	value float64
+	id      int64
+	date    time.Time
+	value   float64
+	abbr    string
+	name    string
+	ids     []int64
+	markers []Marker
 }
 
+func mockDbData() []*Marker {
+
+	var markersDb []*Marker
+
+	markersDb = append(markersDb, &Marker{}, &Marker{}, &Marker{}, &Marker{})
+
+	markersDb[0].abbr = "oak"
+	markersDb[0].id = 43
+	markersDb[0].ids = []int64{17, 44}
+	markersDb[0].name = "Общий анализ крови"
+	m := Marker{id: 17, abbr: "HGB", name: "Гемоглобин"}
+	m2 := Marker{id: 44, abbr: "", name: "Цветной показатель"}
+
+	markersDb[0].markers = append(markersDb[0].markers, m, m2)
+
+	markersDb[1].abbr = "ttg"
+	markersDb[1].id = 69
+	markersDb[1].name = "ТТГ"
+
+	markersDb[2].abbr = "HGB"
+	markersDb[2].id = 23
+	markersDb[2].name = "Гемоглобин"
+
+	markersDb[3].abbr = ""
+	markersDb[3].id = 18
+	markersDb[3].name = "Железо"
+
+	return markersDb
+}
+
+//isGroup ? -> fill; by ids -> for loop range - ids ->fill id; value;
+//save - all; result - like cache ->
+/* then final result -> {
+
+dbSaveView : single : [], group[],
+graphicView : single = group; remove - duplicate(by date; and markerid)
+*/
+
+type Response struct {
+	markersGraphic struct{}
+	markersDb      struct{}
+}
+
+type Group struct {
+	id      int64    //  43
+	markers []Marker // 17, 44
+}
+
+type markersDb struct {
+	single []Marker
+	group  []Group
+}
+
+//coolect each; pdf file; result -> to response {}, return final - result
+func (r Response) Collect() {}
+
 func (p *Pdf) Read() {
+
 	content, err := readPdf4(os.Args[1]) // Read local pdf file
 	if err != nil {
 		panic(err)
 	}
 	p.pages = content
 
-	var markersDb []*DBMarkerIds
+	markersDb := mockDbData()
 
-	markersDb = append(markersDb, &DBMarkerIds{}, &DBMarkerIds{})
-
-	markersDb[0].abbr = "oak"
-	markersDb[0].id = 43
-	markersDb[0].ids = []int{17, 44}
-	markersDb[0].name = "Общий анализ крови"
-
-	markersDb[1].abbr = "ttg"
-	markersDb[1].id = 69
-	markersDb[1].name = "ТТГ"
-
-	markersDb[0].abbr = "HGB"
-	markersDb[0].id = 23
-	markersDb[0].name = "Гемоглобин"
-
-	for _, page := range p.pages {
-		if page.groupIndex > 0 {
-			//group logic;
-		} else {
-			for idx, text := range page.line {
-				for _, dbMrk := range markersDb {
-					//here write value
-					// 	// dbMrk.name == text || if abbr empty ? -> comapre by name
-					if dbMrk.abbr == text {
-						log.Println(page.line[idx+2], "val", idx, text)
-					}
-				}
-			}
-		}
-
+	//loop each page;
+	for _, pg := range p.pages {
+		pg.Compare(markersDb)
 	}
 
-	is group ? -> fill; by ids -> for loop range - ids ->fill id; value;
-	//save - all; result - like cache ->
-	// then final result ->
-
-	for _, marker := range markersDb {
-		//1: for - analyses
-		//2 for - save Db
-		if len(marker.ids) > 0 {
-			//fill group marker
-		} else {
-			//fill single marker
-		}
-	}
-
-	fmt.Println(content)
+	//prepareFinalResult; 1 variant; 2 variant;
 
 }
-
-// func(p *Pdf compchan)
-
-/*
-if user -> want auth ? -> call
-select * names; abbr -> set in Map[name]=id...
-hash sum - of file; compare -> next file is  = uniq ?
-
-readPdf -> save || share -> isAuth -> authByPhone -> fill relative;
-case1: share -> client json -> []groups; []single -> request - fetchs(relId, m_id, value) (save in db markers)
-client -> sent url\share -> markerId; relId; - receive link
-
-readPdf solve:
-return  {
-1 variant: []marker -> for graphic
-2 variant: []group markers; by date;  []single markers; by date; -> for save data Db
-}
-
-save || share :
-case1: send request -> for loop []group => {
-	fetch(groupId : 43, relId : 22,  []{id: 3, val: 2.1; id : 15 : val: 45})..
-}
-
-
-loop - pdfFiles {
-	loop - pdfPages;
-	prepare1Variant() {
-		getDbMarkerId() // name || abbr
-		merge single/group ->
-	}
-	prepare2Variant() {
-		filter by date;
-		devide single & group markers
-		getDbMarkerId() // name || abbr
-
-	}
-}
-return client
-*/
 
 func main() {
 	pdf := NewPdf()
+	//read pdf; compare dbName == line; collectTo; all pdf files; 2 variant; sortRemoveDuplicate = final json
 	pdf.Read()
 	// excel := NewExcel()
 	// excel.Read()
@@ -157,8 +141,118 @@ func main() {
 type Page struct {
 	line       []string
 	groupIndex int
+	isGroup    bool
 	name       string
-	totalPage  int
+	// totalPage  int
+}
+
+//sort by markerId; []marker; []31: {val, date}
+
+func (p *Page) getMrkId(dbMrks []*Marker) (int64, int, []Marker) {
+
+	for _, marker := range dbMrks {
+		for idx, text := range p.line {
+			if marker.name == text {
+				return marker.id, idx, marker.markers // return id, lineIdx
+			}
+			if strings.Contains(marker.name, text) {
+				return marker.id, idx, marker.markers
+			}
+		}
+	}
+	return 0, 0, nil
+}
+
+func (p *Page) GetByIdMarker(id int64, idxLine int) Marker {
+
+	m := Marker{}
+	m.id = id
+
+	s := strings.Split(p.line[idxLine+2], " ")
+	ch := strings.Replace(s[0], ",", ".", 1)
+	f, _ := strconv.ParseFloat(ch, 64)
+	m.value = f
+
+	chT := strings.Replace(p.line[idxLine+6], ".", "-", 2)
+	t, _ := time.Parse("01-02-2006 15:04", chT)
+	// log.Println(t, err)
+	m.date = t
+	return m
+}
+
+func (p *Page) helper(dbMrks []*Marker) (seqMarkers []Marker) {
+
+	for _, marker := range dbMrks {
+		for idx, text := range p.line {
+			if marker.name == text {
+
+				m := Marker{}
+				m.id = marker.id
+
+				s := strings.Split(p.line[idx+2], " ")
+				ch := strings.Replace(s[0], ",", ".", 1)
+				f, _ := strconv.ParseFloat(ch, 64)
+				m.value = f
+
+				chT := strings.Replace(p.line[idx+6], ".", "-", 2)
+
+				t, err := time.Parse("01-02-2006 15:04", chT)
+
+				log.Println(t, err)
+				m.date = t
+				seqMarkers = append(seqMarkers, m)
+
+				log.Println("find marker ", p.line[idx+6], err)
+				// collect to single(); 2 variant
+			}
+		}
+	}
+	return seqMarkers
+}
+
+//set each marker - markerId;
+func (p *Page) Compare(dbMrks []*Marker) {
+	/*compare; map[name]=[]int{}*/
+	singleMrks := Marker{}
+	// groupMrks := []Group{}
+	g := Group{}
+
+	if p.isGroup {
+		// collectTo; plain -> how to compare data;
+		log.Println("group", p.name, p.groupIndex)
+		//get Id; & ids
+		id, _, mrks := p.getMrkId(dbMrks)
+		g.id = id
+		// g.markers = mrks
+		//fill each marker
+		log.Println(id, mrks, "Group markers", len(g.markers), dbMrks)
+		for _, l := range dbMrks {
+			if l.id == g.id {
+				//compare name; set id- to marker object
+				for _, sm := range l.markers {
+					for _, text := range p.line {
+						if sm.name == text {
+							fill to marker object; append - to groupMarker; time; value;
+							log.Println(text, 99)
+						}
+					}
+				}
+			}
+		}
+
+		// for _, mk := range dbMrks
+		//call func, concurrent ?
+		log.Println(g.markers, "res")
+	} else {
+		//func()? gorutine ?
+		singleMrks = p.helper(dbMrks)[0]
+	}
+
+	log.Println(singleMrks)
+}
+
+func NewPage() *Page {
+	return &Page{}
 }
 
 func readPdf4(path string) ([]*Page, error) {
@@ -181,21 +275,16 @@ func readPdf4(path string) ([]*Page, error) {
 		}
 		// 1 file -> N page -> ;
 		// check inside page -> ОАК || single ? -> send page - another func ->
-
 		rows, _ := p.GetTextByRow()
-		// println(pageIndex)
-
 		/* write to struct(then manipalate Data) */
 		page := &Page{}
-
 		for _, row := range rows {
-			// println(">>>> row: ", row.Position, idx)
 			for _, word := range row.Content {
 				page.line = append(page.line, word.S)
-
-				//Қан  талдауы / Общий анализ крови || общий анализ мочи, etc
+				// общий анализ мочи/крови, etc
 				if strings.Contains(word.S, "Общий анализ крови") {
 					page.groupIndex = pageIndex
+					page.isGroup = true
 					log.Println("send group function, this page", pageIndex)
 					page.name = word.S
 				}
@@ -204,7 +293,7 @@ func readPdf4(path string) ([]*Page, error) {
 		}
 		pages = append(pages, page)
 	}
-	log.Println(pages[0], pages[1], pages[2], len(pages))
+	// log.Println(pages[0], pages[1], pages[2], len(pages[2].line), len(pages), "len pages")
 	// p.pages = pages
 	return pages, nil
 }
