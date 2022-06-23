@@ -148,12 +148,28 @@ func (p *Page) division(listRow []pdf.Rows) (pages []*Page) {
 	return pages
 }
 
+/*data json -> client -> ; 2 variant;
+ -register -> save - share|| save ->  register ->; 1.phone; -> 2.anketa; 3.send 1 variant;; save Db; -> call /share
+*/
+/*
+1 read pdf files
+2 register - by phone
+3 request  -  save each single/group in Db
+4 share - getRelId; markerId
+*/
 func (m Marker) Prettier(markers []Marker) {
+	try : age, gender get from pdf;
+	1.4 group - structure  like share service;
+
 	/*1 remove duplicate;
 	  1.2 division by group/single
 	  1.3 sort by date;
+	  1.4 group - like share service;
+
 	*/
 	res := Response{}
+
+	write to []GroupMarkers & singleMarkers
 
 	for _, m := range markers {
 		log.Println(m)
@@ -169,6 +185,8 @@ func (m Marker) Prettier(markers []Marker) {
 		}
 	}
 }
+
+//darh - react, temir - designer;
 
 func (p *Pdf) Read() {
 	// gorutine - read list pdfs
