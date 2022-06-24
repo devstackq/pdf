@@ -76,13 +76,14 @@ fetch group - (groupId, date, relId, { m_id : 17 , values[value: ])
 
 {
   "user": {
-    "year_old": "15-01-1990",
+    "year_old": "15-01-2000",
     "gender": true,
     "relative_id": 0
   },
   "markers": [
     {
       "marker_id": 31,
+      "name": "jelezo",
       "reference": "3.9-8.4",
       "result": [
         {

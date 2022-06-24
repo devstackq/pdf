@@ -53,6 +53,35 @@ type Marker struct {
 	ids        []int64
 	isGroup    bool
 	markers    []Marker
+	// groupMarkers []Marker
+}
+type ResultSingle struct {
+	MarkerId  int64    `json:"marker_id"`
+	Reference string   `json:"reference"`
+	Name      string   `json:"name"`
+	Result    []Values `json:"values"`
+}
+type Values struct {
+	Date  time.Time `json:"date"`
+	Value float64   `json:"value"`
+}
+type Single struct {
+	listMarker []Marker
+	Markers    []ResultSingle `josn:"markers"`
+	mapSingle  map[int64]interface{}
+}
+
+func NewSingle(markers []Marker) *Single {
+	return &Single{listMarker: markers}
+}
+
+type Group struct {
+	listMarker []Marker
+	Group      []ResultGroup `json:"group_markers"`
+}
+
+func NewGroup(markers []Marker) *Group {
+	return &Group{listMarker: markers}
 }
 
 //isGroup ? -> fill; by ids -> for loop range - ids ->fill id; value;
@@ -68,11 +97,11 @@ graphicView : single = group; remove - duplicate(by date; and markerid)
 // 	markersDb      struct{}
 // }
 
-type Group struct {
-	id      int64 //  43
-	date    time.Time
-	markers []Marker // 17, 44
-}
+// type Group struct {
+// 	id      int64 //  43
+// 	date    time.Time
+// 	markers []Marker // 17, 44
+// }
 
 type markersDb struct {
 	single []Marker
@@ -80,8 +109,9 @@ type markersDb struct {
 }
 
 type Response struct {
-	listGroup  []Group
-	listSingle []Marker
+	User       *User          `json:"user"`
+	ListGroup  []ResultGroup  `json:"group_markers"`
+	ListSingle []ResultSingle `json:"markers"`
 }
 
 type Page struct {
@@ -157,44 +187,127 @@ func (p *Page) division(listRow []pdf.Rows) (pages []*Page) {
 3 request  -  save each single/group in Db
 4 share - getRelId; markerId
 5 new signin -> return like trends all markers
+
+
+		if further
+		check author file - by IIN || #order - in Db
+		return response - /upload pdf || akgun - 1 variant
+		//check username each page ? - 1 user - all pdf
+		//nomer zayvki - passed_marker; if nil -> insert; else error
+
 */
-func (m Marker) Prettier(markers []Marker) {
-	log.Println(markers, "m")
-	// try : age, gender get from pdf; - for save register +
 
-	// 1.4 group - structure  like share service;
-	// like share
-	// single marker - last 3 item;
-	// group - last 3 item
-	//check author file - by IIN
+func (m Marker) Division() (single, group []Marker) {
 
-	/*1 remove duplicate;
+	/*
+	  1 remove duplicate;
 	  1.2 division by group/single
 	  1.3 sort by date;
 	  1.4 group - like share service;
 
-	  tod 2 variant : for graphic & save Db group
-
+	  prettier to single marker;
+	  prettier to group marker
+	  merge - single/group
 	*/
-	res := Response{}
 
-	// write to []GroupMarkers & singleMarkers
-
-	for _, m := range markers {
-		if m.isGroup {
-			/*
-				write to []GroupMarkers
-			*/
-			res.listGroup = append(res.listGroup)
-			// append to []groupStruct;
+	//division =  single  / group
+	for _, marker := range m.markers {
+		if marker.isGroup {
+			//func1()
+			group = append(group, marker)
 		} else {
-
-			// append single markers
+			single = append(single, marker)
+			//func2()
+			/*
+				same marker; appedn 1 struct; by tag m.id
+			*/
 		}
 	}
+	return
 }
 
-//darh - react, temir - designer;
+type Prettier interface {
+	Pretty()
+}
+
+func (s *Single) Unboxing() {
+	res := []ResultSingle{}
+	for _, m := range s.mapSingle {
+		res = append(res, m.(ResultSingle))
+	}
+	s.Markers = res
+}
+func (s *Single) Pretty() {
+
+	mapSng := make(map[int64]interface{})
+
+	for _, marker := range s.listMarker {
+
+		if mapSng[marker.id] != nil {
+			curr := mapSng[marker.id].(ResultSingle)
+			v := Values{}
+			v.Date = marker.date
+			v.Value = marker.value
+			curr.Result = append(curr.Result, v)
+			mapSng[marker.id] = curr
+		} else {
+			//dry, func()
+			rs := ResultSingle{}
+			rs.MarkerId = marker.id
+			rs.Name = marker.name
+			rs.Reference = marker.refference
+			v := Values{}
+			v.Date = marker.date
+			v.Value = marker.value
+			rs.Result = append(rs.Result, v)
+			mapSng[marker.id] = rs
+		}
+	}
+	s.mapSingle = mapSng
+	s.Unboxing()
+}
+
+type ResultGroup struct {
+	Id      int64  `json:"group_id"`
+	Name    string `josn:"name"`
+	IsGroup bool   `json:"is_group"`
+	markers []ResultSingle
+}
+
+func (g *Group) Pretty() {
+	mapGroup := make(map[int64]interface{})
+	single := Single{}
+	// log.Println(len(g.listMarker))
+	todo - append child markers - each group markers; define - why !read = all groupPage?
+
+	for _, mg := range g.listMarker {
+		if mapGroup[mg.id] != nil {
+			curr := mapGroup[mg.id].(ResultGroup)
+			//?
+			single.listMarker = mg.markers
+			log.Println(mg.markers, "group child markers")
+			single.Pretty()
+			single.Unboxing()
+			curr.markers = single.Markers
+
+		} else {
+			rg := ResultGroup{}
+			rg.Id = mg.id
+			rg.IsGroup = true
+			rg.Name = mg.name
+			single.listMarker = mg.markers
+			single.Pretty()
+			single.Unboxing()
+
+			rg.markers = single.Markers
+			mapGroup[mg.id] = rg
+		}
+
+	}
+	log.Println(mapGroup, "group final")
+	// todo Unboxing()
+	// g.Group = mapGroup
+}
 
 func (p *Pdf) Read() {
 	// gorutine - read list pdfs
@@ -217,24 +330,34 @@ func (p *Pdf) Read() {
 			markers = append(markers, pg.Compare(markersDb))
 		}
 	}
-	//if further
-	//check username each page ?
-	//check hash sum each pdf  || № заявки: uniq?
-	//nomer zayvki - passed_marker; if nil -> insert; else error
 
 	u.getUserCreds(p.pages[0])
 	log.Println(*u, "user data")
+	res := Response{
+		User: u,
+	}
 
-	// write/sort/duplicate to final struct
 	m := Marker{}
-	m.Prettier(markers)
+	m.markers = markers
+	markers, groupMarkers := m.Division()
+
+	s := NewSingle(markers)
+	g := NewGroup(groupMarkers)
+
+	s.Pretty()
+	g.Pretty()
+	res.ListSingle = s.Markers
+	res.ListGroup = g.Group
+	//todo  sort by date /duplicate remove
+
+	log.Println(res.ListGroup, "final result")
 }
 
 // set each marker - markerId;
 func (p *Page) Compare(dbMrks []Marker) (result Marker) {
 	// func()? gorutine ?
 	if p.isGroup {
-		// get Id; & ids
+		// get group Ids; from dbData
 		id, mrks, name := p.getGroupId(dbMrks)
 		result.id = id
 		result.isGroup = true
@@ -245,7 +368,6 @@ func (p *Page) Compare(dbMrks []Marker) (result Marker) {
 	} else {
 		result = p.helper(dbMrks, false)[0]
 	}
-	// log.Println(result, "res")
 	return
 }
 
@@ -283,6 +405,7 @@ func (u *User) getUserCreds(page *Page) {
 	}
 }
 
+//todo refactor
 func (p *Page) helper(dbMrks []Marker, isGroup bool) (seqMarkers []Marker) {
 	for _, marker := range dbMrks {
 		for idx, text := range p.line {
@@ -298,19 +421,17 @@ func (p *Page) helper(dbMrks []Marker, isGroup bool) (seqMarkers []Marker) {
 				chT := ""
 
 				if isGroup {
+					// m.isGroup = true
 					chT = strings.Replace(p.line[idx+8], ".", "-", 2)
 				} else {
+					// m.isGroup=false
 					chT = strings.Replace(p.line[idx+6], ".", "-", 2)
 				}
 				t, _ := time.Parse("01-02-2006 15:04", chT)
 				m.date = t
 				m.name = text
 				m.refference = p.line[idx+4]
-				// log.Println(t, err)
 				seqMarkers = append(seqMarkers, m)
-
-				// log.Println("find marker ", p.line[idx+6], p.line[idx+8])
-				// collect to single(); 2 variant
 			}
 		}
 	}
