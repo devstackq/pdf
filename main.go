@@ -129,6 +129,7 @@ func mockDbData() []Marker {
 func (r Response) Collect() {}
 
 func (p *Page) division(listRow []pdf.Rows) (pages []*Page) {
+	//todo ; receive []string{oak, oam, etc}
 	for _, rows := range listRow {
 		for _, row := range rows {
 			page := &Page{}
@@ -144,36 +145,42 @@ func (p *Page) division(listRow []pdf.Rows) (pages []*Page) {
 			pages = append(pages, page)
 		}
 	}
-
 	return pages
 }
 
 /*data json -> client -> ; 2 variant;
- -register -> save - share|| save ->  register ->; 1.phone; -> 2.anketa; 3.send 1 variant;; save Db; -> call /share
+-register -> save - share|| save ->  register ->; 1.phone; -> 2.anketa; 3.send 1 variant;; save Db; -> call /share
 */
 /*
 1 read pdf files
 2 register - by phone
 3 request  -  save each single/group in Db
 4 share - getRelId; markerId
+5 new signin -> return like trends all markers
 */
 func (m Marker) Prettier(markers []Marker) {
-	try : age, gender get from pdf;
-	1.4 group - structure  like share service;
+	log.Println(markers, "m")
+	// try : age, gender get from pdf; - for save register +
+
+	// 1.4 group - structure  like share service;
+	// like share
+	// single marker - last 3 item;
+	// group - last 3 item
+	//check author file - by IIN
 
 	/*1 remove duplicate;
 	  1.2 division by group/single
 	  1.3 sort by date;
 	  1.4 group - like share service;
 
+	  tod 2 variant : for graphic & save Db group
+
 	*/
 	res := Response{}
 
-	write to []GroupMarkers & singleMarkers
+	// write to []GroupMarkers & singleMarkers
 
 	for _, m := range markers {
-		log.Println(m)
-
 		if m.isGroup {
 			/*
 				write to []GroupMarkers
@@ -181,6 +188,7 @@ func (m Marker) Prettier(markers []Marker) {
 			res.listGroup = append(res.listGroup)
 			// append to []groupStruct;
 		} else {
+
 			// append single markers
 		}
 	}
@@ -190,26 +198,33 @@ func (m Marker) Prettier(markers []Marker) {
 
 func (p *Pdf) Read() {
 	// gorutine - read list pdfs
-
 	markers := []Marker{}
 	// read pdf files
+	u := NewUser()
+	// get mock db markers
+	markersDb := mockDbData()
+
 	for i := 1; i <= len(os.Args[1:]); i++ {
 		rows, err := p.readPdf(os.Args[i]) // Read local pdf files
 		if err != nil {
 			panic(err)
 		}
 		page := NewPage()
-		// division by single/group marker
+		// division by single/group marker page
 		p.pages = page.division(rows)
-		// get mock db markers
-		markersDb := mockDbData()
-
 		// compare each page; pdf.page.row.name & db.marker name
 		for _, pg := range p.pages {
 			markers = append(markers, pg.Compare(markersDb))
 		}
 	}
-	// log.Println(markers, len(markers))
+	//if further
+	//check username each page ?
+	//check hash sum each pdf  || № заявки: uniq?
+	//nomer zayvki - passed_marker; if nil -> insert; else error
+
+	u.getUserCreds(p.pages[0])
+	log.Println(*u, "user data")
+
 	// write/sort/duplicate to final struct
 	m := Marker{}
 	m.Prettier(markers)
@@ -220,13 +235,13 @@ func (p *Page) Compare(dbMrks []Marker) (result Marker) {
 	// func()? gorutine ?
 	if p.isGroup {
 		// get Id; & ids
-		id, mrks := p.getGroupId(dbMrks)
+		id, mrks, name := p.getGroupId(dbMrks)
 		result.id = id
+		result.isGroup = true
+		result.name = name
 		// call func, concurrent ?
 		result.markers = p.helper(mrks, true)
 		result.date = result.markers[0].date
-		result.isGroup = true
-		// regexp.Match("/./")
 	} else {
 		result = p.helper(dbMrks, false)[0]
 	}
@@ -235,21 +250,39 @@ func (p *Page) Compare(dbMrks []Marker) (result Marker) {
 }
 
 // sort by markerId; []marker; []31: {val, date}
-
-func (p *Page) getGroupId(dbMrks []Marker) (int64, []Marker) {
+func (p *Page) getGroupId(dbMrks []Marker) (int64, []Marker, string) {
 	for _, marker := range dbMrks {
 		for _, text := range p.line {
 			if strings.Contains(marker.name, text) {
-				return marker.id, marker.markers
+				return marker.id, marker.markers, marker.name
 			}
 		}
 	}
-	return 0, nil
+	return 0, nil, ""
 }
 
-// func (p *Page) getDate(dbMrks []Marker) (date time.Time) {
-// }
-// todo refatror
+type User struct {
+	fullName  string
+	birthDate string
+	gender    string
+}
+
+func NewUser() *User {
+	return &User{}
+}
+
+func (u *User) getUserCreds(page *Page) {
+
+	for idx, text := range page.line {
+		if text == "Дата рождения:" {
+			u.fullName = page.line[idx+37]
+			u.birthDate = page.line[idx+41] // convert method todo;
+			u.gender = page.line[idx+47]
+			break
+		}
+	}
+}
+
 func (p *Page) helper(dbMrks []Marker, isGroup bool) (seqMarkers []Marker) {
 	for _, marker := range dbMrks {
 		for idx, text := range p.line {
@@ -271,7 +304,7 @@ func (p *Page) helper(dbMrks []Marker, isGroup bool) (seqMarkers []Marker) {
 				}
 				t, _ := time.Parse("01-02-2006 15:04", chT)
 				m.date = t
-
+				m.name = text
 				m.refference = p.line[idx+4]
 				// log.Println(t, err)
 				seqMarkers = append(seqMarkers, m)
