@@ -13,6 +13,9 @@ import (
 // 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
 func main() {
 	pdf := NewPdf()
+	//use like - pkg - interface - type olymp - Read();
+	//todo try new service - docker container - portainer - ; host - arcana;, microservice another
+
 	// read pdf; compasref dbName == line; collectTo; all pdf files; 2 variant; sortRemoveDuplicate = final json
 	pdf.Read()
 	// excel := NewExcel()
@@ -92,16 +95,6 @@ dbSaveView : single : [], group[],
 graphicView : single = group; remove - duplicate(by date; and markerid)
 */
 
-// type Response struct {
-// 	markersGraphic struct{}
-// 	markersDb      struct{}
-// }
-
-// type Group struct {
-// 	id      int64 //  43
-// 	date    time.Time
-// 	markers []Marker // 17, 44
-// }
 
 type markersDb struct {
 	single []Marker
