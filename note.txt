@@ -177,5 +177,18 @@ variant : fetch() to Group; prepare to client side;
         {...}
       ]
       }
+
+      /*
+	in further
+	check author file - by IIN || #order - in Db
+	return response - /upload pdf || akgun - 1 variant
+	//check username each page ? - 1 user - all pdf
+	//nomer zayvki - passed_marker; if nil -> insert; else error
+	1 remove duplicate; by #order - no save Db & no pdf parse
+	1.3 sort by date;
+	birth; gender; name; separate func()
+*/
       
+
+
 
